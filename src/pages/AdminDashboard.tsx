@@ -25,29 +25,38 @@ const AdminDashboard = () => {
     });
   }, [navigate]);
 
-  const { data: applications } = useQuery({
+  const { data: applications, error: appError } = useQuery({
     queryKey: ["admin-applications"],
     queryFn: async () => {
       const { data, error } = await supabase.from("applications").select("*, programs(name)").order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("Applications error:", error);
+        throw error;
+      }
       return data;
     },
   });
 
-  const { data: messages } = useQuery({
+  const { data: messages, error: msgError } = useQuery({
     queryKey: ["admin-messages"],
     queryFn: async () => {
       const { data, error } = await supabase.from("contact_messages").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("Messages error:", error);
+        throw error;
+      }
       return data;
     },
   });
 
-  const { data: announcements } = useQuery({
+  const { data: announcements, error: annError } = useQuery({
     queryKey: ["admin-announcements"],
     queryFn: async () => {
       const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error("Announcements error:", error);
+        throw error;
+      }
       return data;
     },
   });
@@ -74,12 +83,18 @@ const AdminDashboard = () => {
   const createAnnouncement = useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
       const { error } = await supabase.from("announcements").insert([data]);
-      if (error) throw error;
+      if (error) {
+        console.error("Create announcement error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-announcements"] });
       setNewAnnouncement({ title: "", content: "" });
-      toast({ title: "Announcement posted" });
+      toast({ title: "Announcement posted successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to post announcement", description: error.message, variant: "destructive" });
     },
   });
 
@@ -169,6 +184,7 @@ const AdminDashboard = () => {
         {/* Applications Tab */}
         {activeTab === "applications" && (
           <div className="space-y-4">
+            {applications?.length === 0 && <p className="text-muted-foreground text-center py-8">No applications yet.</p>}
             {applications?.map((app: any) => (
               <div key={app.id} className="bg-card rounded-xl p-6 border border-border">
                 <div className="flex flex-wrap justify-between items-start gap-4">
