@@ -12,7 +12,7 @@ const ALLOWED_ADMIN_EMAIL = "jokabrahamthon@promisedlandss.org";
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +30,14 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      if (!isLogin) {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/admin/reset-password`,
+        });
+        if (error) throw error;
+        toast({ title: "Email Sent!", description: "Check your inbox for a password reset link." });
+        setMode("login");
+      } else if (mode === "signup") {
         if (email.toLowerCase() !== ALLOWED_ADMIN_EMAIL.toLowerCase()) {
           toast({ title: "Error", description: "Only the designated admin email can sign up.", variant: "destructive" });
           setLoading(false);
@@ -41,7 +48,7 @@ const AdminLogin = () => {
         if (data.user) {
           await supabase.from("user_roles").insert({ user_id: data.user.id, role: "admin" });
           toast({ title: "Account Created!", description: "You can now log in." });
-          setIsLogin(true);
+          setMode("login");
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -63,7 +70,9 @@ const AdminLogin = () => {
             <GraduationCap className="h-8 w-8 text-slate-900" />
           </div>
           <h1 className="font-serif text-2xl font-bold text-foreground">Admin Portal</h1>
-          <p className="text-muted-foreground text-sm mt-1">{isLogin ? "Sign in to your account" : "Create admin account"}</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            {mode === "login" ? "Sign in to your account" : mode === "signup" ? "Create admin account" : "Reset your password"}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,19 +80,27 @@ const AdminLogin = () => {
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
+          {mode !== "forgot" && (
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+          )}
           <Button type="submit" variant="gold" size="lg" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : isLogin ? "Sign In" : "Sign Up"}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "login" ? "Sign In" : mode === "signup" ? "Sign Up" : "Send Reset Link"}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          {isLogin ? "Need an admin account?" : "Already have an account?"}{" "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-amber-600 hover:underline font-medium">
-            {isLogin ? "Sign Up" : "Sign In"}
+        {mode === "login" && (
+          <button onClick={() => setMode("forgot")} className="block w-full text-center text-sm text-muted-foreground mt-4 hover:text-amber-600">
+            Forgot Password?
+          </button>
+        )}
+
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          {mode === "login" ? "Need an admin account?" : "Already have an account?"}{" "}
+          <button onClick={() => setMode(mode === "login" ? "signup" : "login")} className="text-amber-600 hover:underline font-medium">
+            {mode === "login" ? "Sign Up" : "Sign In"}
           </button>
         </p>
       </div>
